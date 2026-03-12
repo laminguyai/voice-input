@@ -1,6 +1,6 @@
-const CACHE_NAME = 'cantonese-voice-v2';
+const CACHE_NAME = 'voice-helper-v1';
 const ASSETS = [
-  'voice.html',    // 確保這裡名稱與你的 HTML 檔案一致
+  'voice.html',
   'manifest.json'
 ];
 
@@ -12,8 +12,6 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
-    })
+    caches.match(e.request).then((res) => res || fetch(e.request))
   );
 });
