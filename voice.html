@@ -7,171 +7,570 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#1e293b">
     
-    <title>廣東話語音助手</title>
+    <title>廣東話語音助手 v3.0</title>
     <style>
+        /* 基礎樣式重置 */
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh; display: flex; flex-direction: column;
+            /* 修改 app theme Color 1. body background */
+            /* 圖片風格的深藍灰色漸變 */
+            background: linear-gradient(180deg, #101010 0%, #1e1e1e 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
+
+        /* 容器優化：手機端全屏顯示，限制大螢幕寬度 */
         .container {
-            width: 100%; max-width: 100%; margin: 0 auto;
-            background: rgba(255, 255, 255, 0.98);
-            min-height: 100vh; display: flex; flex-direction: column;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            /* 圖片風格的深灰色卡片背景 */
+            background: rgba(30, 30, 30, 0.98);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
         }
+
+        /* 大螢幕（平板/電腦）下的佈局 */
         @media (min-width: 768px) {
-            .container { max-width: 600px; min-height: 90vh; margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+            .container { 
+                max-width: 600px; 
+                min-height: 95vh; 
+                margin: 20px auto; 
+                border-radius: 20px; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
+            }
         }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
-        .main-content { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
-        .stats { display: flex; gap: 10px; }
-        .stat-box { background: #f8f9fa; padding: 10px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #eee; }
-        .stat-box .number { font-size: 1.4em; font-weight: bold; color: #667eea; }
-        .stat-box .label { font-size: 0.7em; color: #666; }
-        .mic-section { text-align: center; padding: 25px 0; background: #fff; border-radius: 20px; border: 2px dashed #ddd; }
+
+        /* 頁首樣式 */
+        .header { 
+            /* 深藍黑色渐变，使用青色强调图标 */
+            background: linear-gradient(135deg, #101010 0%, #1e1e1e 100%); 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+        }
+        .header h1 { font-size: 1.3em; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .header h1 .btn-icon { width: 24px; height: 24px; color: #6ee7b7; /* 麦克风图标使用青色強調 */ }
+        .header p { opacity: 0.8; font-size: 0.8em; }
+
+        /* 主內容區域佈局 */
+        .main-content { 
+            padding: 20px; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            overflow-y: auto; 
+        }
+
+        /* 警告框 */
+        .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; padding: 12px; font-size: 0.85em; color: #856404; display: none; }
+        .warning-box.show { display: block; }
+
+        /* 修改 app theme Color 2. stats */
+        /* 統計卡片，深色背景，青色強調 */
+        .stats { display: flex; gap: 12px; }
+        .stat-box { background: #2a2a2a; border: 1px solid #444; padding: 12px; border-radius: 15px; flex: 1; text-align: center; }
+        .stat-box .number { font-size: 1.5em; font-weight: bold; color: #6ee7b7; /* 數字使用青色强调色 */ }
+        .stat-box .label { font-size: 0.75em; color: #999; font-weight: 600; text-transform: uppercase; }
+
+        /* 錄音按鈕區域 移至下方方便單手使用 3. mic section */
+        /* 移動結構並修改樣式 */
+        .mic-section { 
+            text-align: center; 
+            padding: 20px 0; 
+            background: #2a2a2a; /* 深灰色卡片 */
+            border-radius: 20px; 
+            border: 1px dashed #444; /* 深色虛線 */
+            margin: 5px 0; 
+        }
         .mic-button {
-            width: 80px; height: 80px; border-radius: 50%; border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; font-size: 30px; cursor: pointer; box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+            width: 85px; height: 85px; border-radius: 50%; border: none;
+            /* 默認狀態：深灰色按鈕，白色文字 */
+            background: #3a3a3a;
+            color: white; font-size: 32px; cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s; position: relative; touch-action: manipulation;
         }
-        .mic-button.recording { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(245, 87, 108, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); } }
+        .mic-button:active { transform: scale(0.92); }
+        .mic-button.recording { 
+            /* 活動狀態：從紫色改為青色漸變 */
+            background: linear-gradient(135deg, #34d399 0%, #6ee7b7 100%); 
+            animation: pulse 1.5s infinite; 
+            box-shadow: 0 0 0 10px rgba(110, 231, 183, 0.6);
+        }
+
+        /* 活動狀態脈衝效果 */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.6); }
+            70% { box-shadow: 0 0 0 20px rgba(110, 231, 183, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+        }
+
+        /* 錄音狀態文字，淡灰色 */
+        .status { margin-top: 12px; font-size: 0.95em; color: #999; font-weight: 600; }
+        .status.recording { color: #f5576c; /* 錄音中保持紅色警告樣式 */ }
+
+        /* 修改 app theme Color 4. input display */
+        /* 輸入框，深色背景，白色文字 */
         .input-display {
-            background: #fff; border: 2px solid #f0f0f0; border-radius: 15px; padding: 15px;
-            font-size: 1.1em; min-height: 150px; outline: none; white-space: pre-wrap;
+            background: #2a2a2a; /* 深灰色輸入框 */
+            border: 2px solid #444; /* 深灰色邊框 */
+            border-radius: 18px; padding: 18px;
+            font-size: 1.1em; line-height: 1.6; color: #eee; /* 文字顏色改為淡白色 */
+            min-height: 120px; max-height: 200px;
+            overflow-y: auto; -webkit-overflow-scrolling: touch; outline: none; transition: border-color 0.3s;
         }
-        .input-display:empty:before { content: "點擊開始錄音..."; color: #ccc; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 12px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-primary { background: #667eea; color: white; }
-        .btn-success { background: #2ecc71; color: white; }
-        .btn-secondary { background: #f0f0f0; color: #555; }
-        .btn-danger { background: #fee; color: #e74c3c; grid-column: 1/-1; }
-        .history-item { background: #f9f9f9; padding: 12px; margin-top: 10px; border-radius: 10px; position: relative; }
-        .history-item .text { padding-right: 50px; font-size: 0.95em; }
-        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: 0.3s; z-index: 1000; }
+        .input-display:focus { border-color: #667eea; }
+        .input-display:empty:before { content: "點擊上方按鈕開始錄音..."; color: #777; /* 占位符灰色 */ font-style: italic; }
+        .char-count { text-align: right; font-size: 0.8em; color: #777; margin-top: 5px; padding-right: 5px; }
+
+        /* 修改錄音按鈕移至下方 5. controls */
+        /* 按鈕控制區佈局，保持1列2個 */
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        
+        /* 修改 app theme Color 6. buttons */
+        /* 按鈕樣式，深色背景，青色強調儲存 */
+        .btn {
+            padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+            /* 增加文字大小 7. button text size */
+            font-size: 1.15em; 
+            font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;
+            /* 默認深色背景，白色文字 */
+            background: #3a3a3a; 
+            color: white;
+            transition: filter 0.2s;
+        }
+        .btn:active { filter: brightness(0.9); }
+        .btn-primary { 
+            /* 儲存按鈕，可以添加青色強調 */
+            border-left: 3px solid #6ee7b7;
+        }
+        .btn-success { background: #3a3a3a; color: white; /* 分享按鈕 */ }
+        .btn-secondary { background: #3a3a3a; color: white; /* 複製、清空按鈕 */ }
+        .btn-danger { 
+            /* 全刪按鈕，深色背景，紅色文字 */
+            color: #e74c3c; border: 1px solid #444; 
+        }
+        .btn-full { grid-column: 1 / -1; }
+
+        /* SVG Icon 樣式 8. icon styles */
+        .btn-icon { width: 22px; height: 22px; color: inherit; display: block; }
+        .icon-btn .btn-icon { width: 18px; height: 18px; }
+
+        /* 修改Icon and Color 9. history */
+        /* 歷史記錄區域，深色卡片，增加文字大小 */
+        .history-section { border-top: 1px solid #444; padding-top: 20px; margin-top: 10px; }
+        .history-item { 
+            /* 深灰色卡片背景 */
+            background: #2a2a2a; 
+            padding: 15px; margin-bottom: 8px; border-radius: 15px; position: relative; border: 1px solid #444; 
+        }
+        .history-item .date { font-size: 0.75em; color: #999; margin-bottom: 6px; }
+        .history-item .text { font-size: 0.95em; color: #eee; /* 文字顏色改為淡白色 */ padding-right: 65px; line-height: 1.4; }
+        .history-item .actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; }
+        
+        /* 歷史記錄卡片按鈕，深色背景，青色強調複製 */
+        .icon-btn { 
+            width: 32px; height: 32px; border-radius: 50%; border: none; 
+            /* 默認深色背景 */
+            background: #3a3a3a; 
+            color: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; 
+        }
+        .icon-btn.copy { 
+            /* 複製icon可以添加青色強調 */
+            color: #6ee7b7; 
+        }
+        .icon-btn.delete { 
+            /* 刪除icon可以添加紅色強調 */
+            color: #e74c3c; 
+        }
+
+        /* 提示框，深色，青色強調 */
+        .toast {
+            position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 12px 24px;
+            border-radius: 30px; font-size: 0.9em; opacity: 0; transition: 0.3s; z-index: 1000;
+            white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            /* border-left: 3px solid #6ee7b7; */
+        }
         .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <div class="header"><h1>🎤 廣東話語音助手</h1><p>自動暫停優化版</p></div>
+        <div class="header">
+            <h1>
+                <span id="headerMicIcon">
+                    </span>
+                廣東話語音助手
+            </h1>
+            <p>手機底部署 | 專業深色主題 | 支援分享及安裝</p>
+        </div>
+
         <div class="main-content">
+            <div id="warningBox" class="warning-box">⚠️ <span id="warningText"></span></div>
+
             <div class="stats">
                 <div class="stat-box"><div class="number" id="totalCount">0</div><div class="label">總記錄</div></div>
                 <div class="stat-box"><div class="number" id="todayCount">0</div><div class="label">今日</div></div>
             </div>
-            <div class="mic-section">
-                <button class="mic-button" id="micBtn">🎙️</button>
-                <div id="status" style="margin-top:10px; font-size:0.9em; color:#666;">點擊按鈕說話</div>
+
+            <div class="input-wrapper">
+                <div class="input-display" id="inputDisplay" contenteditable="true"></div>
+                <div class="char-count" id="charCount">0 字</div>
             </div>
-            <div class="input-display" id="inputDisplay" contenteditable="true"></div>
+
             <div class="controls">
-                <button class="btn btn-primary" onclick="saveToHistory()">💾 儲存</button>
-                <button class="btn btn-success" onclick="shareText()">📤 分享</button>
-                <button class="btn btn-secondary" onclick="copyText()">📋 複製</button>
-                <button class="btn btn-secondary" onclick="clearInput()">🗑️ 清空</button>
-                <button class="btn btn-danger" onclick="clearAllHistory()">⚠️ 刪除所有記錄</button>
+                <button class="btn btn-primary" onclick="saveToHistory()" id="saveBtn">
+                    儲存
+                </button>
+                <button class="btn btn-success" onclick="shareText()" id="shareBtn">
+                    分享
+                </button>
+                <button class="btn btn-secondary" onclick="copyText()" id="copyBtn">
+                    複製
+                </button>
+                <button class="btn btn-secondary" onclick="clearInput()" id="clearBtn">
+                    清空
+                </button>
+                <button class="btn btn-secondary" onclick="exportData()" id="exportBtn">
+                    匯出
+                </button>
+                <button class="btn btn-danger" onclick="clearAllHistory()" id="clearAllBtn">
+                    全刪
+                </button>
             </div>
-            <div id="historyList"></div>
+
+            <div class="mic-section">
+                <button class="mic-button" id="micBtn">
+                    <span id="micBtnIcon">
+                        </span>
+                </button>
+                <div class="status" id="status">點擊按鈕說話</div>
+            </div>
+
+            <div class="history-section">
+                <h3 style="margin-bottom: 12px; font-size: 1.1em; color: #eee; display:flex; align-items:center; gap:8px;">
+                    <span id="historyIcon">
+                        </span>
+                    歷史記錄 (前20條)
+                </h3>
+                <div id="historyList"></div>
+            </div>
         </div>
     </div>
+
     <div class="toast" id="toast"></div>
 
     <script>
-        // PWA 註冊
+        // 定義 SVG icon 映射
+        const iconSvg = {
+            mic: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3m0 12a5.006 5.006 0 0 1-5-5H5a7 7 0 0 0 6.13 6.94L11 20v2h2v-2l-.13-3.06A7 7 0 0 0 19 9h-2a5.006 5.006 0 0 1-5 5Z"/></svg>`,
+            save: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96ZM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4a4 4 0 0 1 1-7.87 5.511 5.511 0 0 1 11 0A2.99 2.99 0 0 1 22 15c0 1.66-1.34 3-3 3Z"/></svg>`,
+            share: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3a3 3 0 0 0-3-3a3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3a3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65a3 3 0 0 0 3 3a3 3 0 0 0 3-3a3 3 0 0 0-3-3Z"/></svg>`,
+            copy: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 2h-6a3 3 0 0 0-3 3v2h2V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3Z"/><path fill="currentColor" d="M14 8H8a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-6a3 3 0 0 0-3-3Zm1 9a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6Z"/></svg>`,
+            clear: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"/><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Z"/></svg>`,
+            export: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h4v2H5v6h12v-6h-4v-2h4a2 2 0 0 1 2 2Z"/><path fill="currentColor" d="M11 14h2V6.41l2.29 2.3L16.71 7.3L12 2.6l-4.71 4.7l1.42 1.41L11 6.41V14Z"/></svg>`,
+            history: `<svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l4 3.99L9 12H6a7 7 0 0 1 7-7a7 7 0 0 1 7 7a7 7 0 0 1-7 7a6.957 6.957 0 0 1-5.03-2.09l-1.41 1.42A9 9 0 1 0 13 3Zm-1 5v5l4.28 2.54l.72-1.21L13.5 12.1V8H12Z"/></svg>`,
+        };
+
+        // 替換頁首和錄音按鈕 icon
+        document.getElementById('headerMicIcon').innerHTML = iconSvg.mic;
+        document.getElementById('micBtnIcon').innerHTML = iconSvg.mic;
+        document.getElementById('historyIcon').innerHTML = iconSvg.history;
+
+        // 替換控制按鈕 icon
+        document.getElementById('saveBtn').innerHTML = `${iconSvg.save}儲存`;
+        document.getElementById('shareBtn').innerHTML = `${iconSvg.share}分享`;
+        document.getElementById('copyBtn').innerHTML = `${iconSvg.copy}複製`;
+        document.getElementById('clearBtn').innerHTML = `${iconSvg.clear}清空`;
+        document.getElementById('exportBtn').innerHTML = `${iconSvg.export}匯出`;
+        document.getElementById('clearAllBtn').innerHTML = `${iconSvg.clear}全刪`;
+
+        // 註冊 PWA Service Worker (同步更新sw.js和manifest.json)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Error:', err));
         }
 
-        let recognition = null, isRecording = false, finalTranscript = '', silenceTimer = null, wakeLock = null;
-        const micBtn = document.getElementById('micBtn'), inputDisplay = document.getElementById('inputDisplay');
+        // 變數定義保持一致
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        let silenceTimer = null;
+        let wakeLock = null;
+        const SILENCE_TIMEOUT = 3000; // 3秒靜音自動暫停
+        const STORAGE_KEY = 'cantonese_voice_v2'; // 保留舊儲存鍵以實現相容
 
+        const micBtn = document.getElementById('micBtn');
+        const status = document.getElementById('status');
+        const inputDisplay = document.getElementById('inputDisplay');
+        const charCount = document.getElementById('charCount');
+
+        // 初始化語音辨識
         function initRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert('不支援語音辨識');
+            if (!SpeechRecognition) {
+                showWarning('此瀏覽器不支援語音功能。iOS 請用 Safari，Android 請用 Chrome。');
+                return false;
+            }
+
             recognition = new SpeechRecognition();
-            recognition.lang = 'zh-HK';
+            recognition.continuous = false; // 手機模式設為 false
             recognition.interimResults = true;
-            recognition.onstart = () => { 
-                isRecording = true; micBtn.classList.add('recording'); 
-                resetSilenceTimer();
-                requestWakeLock();
+            recognition.lang = 'zh-HK';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                micBtn.classList.add('recording');
+                status.textContent = '🔴 正在聆聽...';
+                status.classList.add('recording');
+                if (navigator.vibrate) navigator.vibrate(50);
+                startSilenceTimer();
             };
+
             recognition.onend = () => {
-                isRecording = false; micBtn.classList.remove('recording');
-                if (micBtn.classList.contains('auto-restart')) recognition.start();
-                else releaseWakeLock();
-            };
-            recognition.onresult = (event) => {
-                resetSilenceTimer();
-                let interim = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                    else interim += event.results[i][0].transcript;
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                
+                if (interimTranscript) {
+                    finalTranscript += interimTranscript;
+                    interimTranscript = '';
+                    updateDisplay();
                 }
-                inputDisplay.textContent = finalTranscript + interim;
+
+                if (micBtn.classList.contains('auto-restart')) {
+                    recognition.start();
+                } else {
+                    status.textContent = '已暫停';
+                    status.classList.remove('recording');
+                    releaseWakeLock();
+                }
             };
-            recognition.onerror = (e) => { if(e.error === 'no-speech') stopRecording(); };
+
+            recognition.onresult = (event) => {
+                resetSilenceTimer(); // 只要有聲音，就重置計時器
+                
+                interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalTranscript += result;
+                    else interimTranscript += result;
+                }
+                updateDisplay();
+            };
+
+            recognition.onerror = (event) => {
+                console.log('Recognition Error:', event.error);
+                if (event.error === 'no-speech') {
+                    stopRecording(); // 沒聲音直接徹底停止，避免重新啟動循环
+                    showToast('沒偵測到聲音，已自動暫停');
+                }
+            };
+
             return true;
         }
 
-        function resetSilenceTimer() {
+        // 靜音計時器邏輯
+        function startSilenceTimer() {
             clearTimeout(silenceTimer);
-            silenceTimer = setTimeout(() => { if(isRecording) { stopRecording(); showToast('偵測到靜音，已停止'); } }, 3000);
+            silenceTimer = setTimeout(() => {
+                if (isRecording) {
+                    stopRecording();
+                    showToast('偵測到靜音，已自動暫停');
+                }
+            }, SILENCE_TIMEOUT);
         }
 
-        function startRecording() {
+        function resetSilenceTimer() {
+            if (isRecording) startSilenceTimer();
+        }
+
+        // 畫面顯示邏輯
+        function updateDisplay() {
+            const fullText = finalTranscript + interimTranscript;
+            inputDisplay.textContent = fullText;
+            charCount.textContent = fullText.length + ' 字';
+            sessionStorage.setItem('draft', fullText); // 草稿功能保持
+        }
+
+        // 錄音控制
+        async function startRecording() {
             if (!recognition && !initRecognition()) return;
             finalTranscript = inputDisplay.textContent;
-            micBtn.classList.add('auto-restart');
-            recognition.start();
+            micBtn.classList.add('auto-restart'); // 標記為自動重新啟動模式
+            try {
+                await requestWakeLock(); // 防止休眠
+                recognition.start();
+            } catch (e) { console.error(e); }
         }
 
         function stopRecording() {
-            micBtn.classList.remove('auto-restart');
+            micBtn.classList.remove('auto-restart'); // 清除自動重新啟動標記
             clearTimeout(silenceTimer);
-            if(recognition) recognition.stop();
+            if (recognition) recognition.stop();
+            releaseWakeLock();
         }
 
-        micBtn.addEventListener('click', () => isRecording ? stopRecording() : startRecording());
+        micBtn.addEventListener('click', () => {
+            if (isRecording) stopRecording();
+            else startRecording();
+        });
 
+        // 按鈕功能，優化圖標和文字大小
         async function shareText() {
-            const text = inputDisplay.textContent;
-            if (navigator.share) await navigator.share({ text });
-            else { copyText(); showToast('已複製'); }
+            const text = inputDisplay.textContent.trim();
+            if (!text) return showToast('內容為空');
+            if (navigator.share) {
+                try { await navigator.share({ title: '語音輸入分享', text: text }); } catch(e){}
+            } else { copyText(); showToast('瀏覽器不支援分享，已改為複製'); }
         }
 
-        function copyText() { navigator.clipboard.writeText(inputDisplay.textContent); showToast('✅ 已複製'); }
-        function clearInput() { finalTranscript = ''; inputDisplay.textContent = ''; }
+        function copyText() {
+            const text = inputDisplay.textContent;
+            if (!text) return showToast('內容為空');
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✅ 已複製');
+                if (navigator.vibrate) navigator.vibrate([30, 50, 30]); // 青色强调複製的震動
+            });
+        }
 
+        function clearInput() {
+            finalTranscript = ''; interimTranscript = '';
+            inputDisplay.textContent = ''; charCount.textContent = '0 字';
+            sessionStorage.removeItem('draft');
+        }
+
+        // 歷史記錄數據管理，保持核心邏輯
         function saveToHistory() {
             const text = inputDisplay.textContent.trim();
-            if(!text) return;
-            const records = JSON.parse(localStorage.getItem('voice_records') || '[]');
-            records.unshift({ id: Date.now(), text, date: new Date().toLocaleString() });
-            localStorage.setItem('voice_records', JSON.stringify(records.slice(0, 20)));
-            renderHistory(); showToast('💾 已儲存');
+            if (!text) return showToast('沒內容可儲存');
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            records.unshift({
+                id: Date.now(),
+                text: text,
+                date: new Date().toLocaleString('zh-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(0, 20))); // 只存前20條
+            renderHistory();
+            updateStats();
+            showToast('💾 已儲存至歷史');
+            if (navigator.vibrate) navigator.vibrate(100);
         }
 
+        // 歷史記錄渲染，替換 Emoji 為 SVG
         function renderHistory() {
-            const records = JSON.parse(localStorage.getItem('voice_records') || '[]');
-            document.getElementById('historyList').innerHTML = records.map(r => `
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const list = document.getElementById('historyList');
+            if (records.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">暫無記錄</p>'; return; }
+            
+            list.innerHTML = records.map(r => `
                 <div class="history-item">
-                    <div style="font-size:0.7em; color:#999;">${r.date}</div>
-                    <div class="text">${r.text}</div>
+                    <div class="date">${r.date} | ${r.text.length}字</div>
+                    <div class="text">${escapeHtml(r.text)}</div>
+                    <div class="actions">
+                        <button class="icon-btn copy" onclick="copyRecordText('${r.text.replace(/'/g, "\\'")}')" title="複製">
+                            ${iconSvg.copy}
+                        </button>
+                        <button class="icon-btn delete" onclick="deleteRecord(${r.id})" title="刪除">
+                            ${iconSvg.clear}
+                        </button>
+                    </div>
                 </div>
             `).join('');
-            document.getElementById('totalCount').textContent = records.length;
         }
 
-        async function requestWakeLock() { try { if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} }
-        function releaseWakeLock() { if(wakeLock) { wakeLock.release(); wakeLock = null; } }
-        function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
-        window.onload = renderHistory;
+        // 用於歷史記錄按鈕的複製
+        function copyRecordText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已複製');
+                if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+            });
+        }
+
+        function deleteRecord(id) {
+            if (confirm('確定刪除這條記錄嗎？')) {
+                const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(records.filter(r => r.id !== id)));
+                renderHistory();
+                updateStats();
+            }
+        }
+
+        function clearAllHistory() {
+            if (confirm('⚠️ 確定要刪除「所有」歷史記錄嗎？此動作無法復原。')) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderHistory();
+                updateStats();
+            }
+        }
+
+        function exportData() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            if (records.length === 0) return showToast('沒有數據可匯出');
+            const blob = new Blob([JSON.stringify(records, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `voice-records-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            showToast('✅ 數據已匯出');
+        }
+
+        // 螢幕休眠控制
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+            }
+        }
+        function releaseWakeLock() {
+            if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
+        }
+
+        function updateStats() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            document.getElementById('totalCount').textContent = records.length;
+            const today = new Date().toDateString();
+            document.getElementById('todayCount').textContent = records.filter(r => new Date(r.id).toDateString() === today).length;
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast'); t.textContent = m;
+            t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        function showWarning(t) {
+            const b = document.getElementById('warningBox'); document.getElementById('warningText').textContent = t;
+            b.classList.add('show');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div'); div.textContent = text; return div.innerHTML;
+        }
+
+        // 初始化
+        window.onload = () => {
+            const draft = sessionStorage.getItem('draft');
+            if (draft) { finalTranscript = draft; updateDisplay(); }
+            renderHistory();
+            updateStats();
+            const ua = navigator.userAgent;
+            const isIOS = /iPhone|iPad|iPod/.test(ua);
+            const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+            if (isIOS && !isSafari) showWarning('iOS 用戶請注意：請使用內置 Safari 瀏覽器以確保語音功能運作正常。');
+        };
     </script>
 </body>
 </html>
