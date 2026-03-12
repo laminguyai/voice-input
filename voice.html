@@ -94,4 +94,302 @@
         .history-section { border-top: 1px solid #eee; padding-top: 15px; margin-top: 10px; }
         .history-item { background: #f9f9f9; padding: 12px; margin-bottom: 8px; border-radius: 10px; position: relative; }
         .history-item .date { font-size: 0.7em; color: #999; margin-bottom: 4px; }
-        .history-item .text { font-size: 0.
+        .history-item .text { font-size: 0.95em; color: #444; padding-right: 60px; }
+        .history-item .actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
+        
+        .icon-btn { width: 30px; height: 30px; border-radius: 50%; border: none; color: white; font-size: 14px; cursor: pointer; }
+        .icon-btn.copy { background: #2ecc71; }
+        .icon-btn.delete { background: #e74c3c; }
+
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 10px 20px;
+            border-radius: 30px; font-size: 0.85em; opacity: 0; transition: 0.3s; z-index: 1000;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎤 廣東話語音輸入</h1>
+            <p>無聲自動暫停 | 支援分享及安裝</p>
+        </div>
+
+        <div class="main-content">
+            <div id="warningBox" class="warning-box">⚠️ <span id="warningText"></span></div>
+
+            <div class="stats">
+                <div class="stat-box"><div class="number" id="totalCount">0</div><div class="label">總記錄</div></div>
+                <div class="stat-box"><div class="number" id="todayCount">0</div><div class="label">今日</div></div>
+            </div>
+
+            <div class="mic-section">
+                <button class="mic-button" id="micBtn">🎙️</button>
+                <div class="status" id="status">點擊按鈕說話</div>
+            </div>
+
+            <div class="input-wrapper">
+                <div class="input-display" id="inputDisplay" contenteditable="true"></div>
+                <div class="char-count" id="charCount">0 字</div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="saveToHistory()">💾 儲存</button>
+                <button class="btn btn-success" onclick="shareText()">📤 分享</button>
+                <button class="btn btn-secondary" onclick="copyText()">📋 複製</button>
+                <button class="btn btn-secondary" onclick="clearInput()">🗑️ 清空</button>
+                <button class="btn btn-danger btn-full" onclick="clearAllHistory()">⚠️ 刪除所有歷史記錄</button>
+            </div>
+
+            <div class="history-section">
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 註冊 PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+        }
+
+        // 變數定義
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        let silenceTimer = null;
+        let wakeLock = null;
+        const SILENCE_TIMEOUT = 3000; // 3秒靜音自動停止
+        const STORAGE_KEY = 'cantonese_voice_v2';
+
+        const micBtn = document.getElementById('micBtn');
+        const status = document.getElementById('status');
+        const inputDisplay = document.getElementById('inputDisplay');
+        const charCount = document.getElementById('charCount');
+
+        // 初始化語音辨識
+        function initRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showWarning('此瀏覽器不支援語音功能。iOS 請用 Safari，Android 請用 Chrome。');
+                return false;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // 手機版建議設為 false，靠代碼邏輯控制重啟
+            recognition.interimResults = true;
+            recognition.lang = 'zh-HK';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                micBtn.classList.add('recording');
+                status.textContent = '🔴 正在聆聽...';
+                status.classList.add('recording');
+                if (navigator.vibrate) navigator.vibrate(50);
+                startSilenceTimer();
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                
+                // 處理結尾文字
+                if (interimTranscript) {
+                    finalTranscript += interimTranscript;
+                    interimTranscript = '';
+                    updateDisplay();
+                }
+
+                // 如果是手動「自動重啟」模式（未觸發靜音停止時）
+                if (micBtn.classList.contains('auto-restart')) {
+                    recognition.start();
+                } else {
+                    status.textContent = '已暫停';
+                    status.classList.remove('recording');
+                    releaseWakeLock();
+                }
+            };
+
+            recognition.onresult = (event) => {
+                resetSilenceTimer(); // 只要有聲音，就重置計時器
+                
+                interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalTranscript += result;
+                    else interimTranscript += result;
+                }
+                updateDisplay();
+            };
+
+            recognition.onerror = (event) => {
+                console.log('Recognition Error:', event.error);
+                if (event.error === 'no-speech') {
+                    stopRecording(); // 沒聲音直接徹底停止
+                    showToast('沒偵測到聲音，已自動停止');
+                }
+            };
+
+            return true;
+        }
+
+        // 靜音計時器邏輯
+        function startSilenceTimer() {
+            clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => {
+                if (isRecording) {
+                    stopRecording();
+                    showToast('太久沒說話，已自動停止');
+                }
+            }, SILENCE_TIMEOUT);
+        }
+
+        function resetSilenceTimer() {
+            if (isRecording) startSilenceTimer();
+        }
+
+        // 顯示更新
+        function updateDisplay() {
+            const fullText = finalTranscript + interimTranscript;
+            inputDisplay.textContent = fullText;
+            charCount.textContent = fullText.length + ' 字';
+            sessionStorage.setItem('draft', fullText);
+        }
+
+        // 錄音控制
+        async function startRecording() {
+            if (!recognition && !initRecognition()) return;
+            finalTranscript = inputDisplay.textContent;
+            micBtn.classList.add('auto-restart');
+            try {
+                await requestWakeLock();
+                recognition.start();
+            } catch (e) { console.error(e); }
+        }
+
+        function stopRecording() {
+            micBtn.classList.remove('auto-restart');
+            clearTimeout(silenceTimer);
+            if (recognition) recognition.stop();
+            releaseWakeLock();
+        }
+
+        micBtn.addEventListener('click', () => {
+            if (isRecording) stopRecording();
+            else startRecording();
+        });
+
+        // 功能函數
+        async function shareText() {
+            const text = inputDisplay.textContent.trim();
+            if (!text) return showToast('內容為空');
+            if (navigator.share) {
+                try { await navigator.share({ title: '語音輸入', text: text }); } catch(e){}
+            } else { copyText(); showToast('瀏覽器不支援分享，已改為複製'); }
+        }
+
+        function copyText() {
+            const text = inputDisplay.textContent;
+            navigator.clipboard.writeText(text).then(() => showToast('✅ 已複製'));
+        }
+
+        function clearInput() {
+            finalTranscript = ''; interimTranscript = '';
+            inputDisplay.textContent = ''; charCount.textContent = '0 字';
+            sessionStorage.removeItem('draft');
+        }
+
+        // 歷史記錄管理
+        function saveToHistory() {
+            const text = inputDisplay.textContent.trim();
+            if (!text) return showToast('沒內容可儲存');
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            records.unshift({
+                id: Date.now(),
+                text: text,
+                date: new Date().toLocaleString('zh-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(0, 50))); // 只存50條
+            renderHistory();
+            updateStats();
+            showToast('💾 已儲存');
+        }
+
+        function renderHistory() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const list = document.getElementById('historyList');
+            if (records.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">暫無記錄</p>'; return; }
+            list.innerHTML = records.map(r => `
+                <div class="history-item">
+                    <div class="date">${r.date} | ${r.text.length}字</div>
+                    <div class="text">${r.text}</div>
+                    <div class="actions">
+                        <button class="icon-btn copy" onclick="navigator.clipboard.writeText('${r.text.replace(/'/g, "\\'")}');showToast('已複製')">📋</button>
+                        <button class="icon-btn delete" onclick="deleteRecord(${r.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(id) {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records.filter(r => r.id !== id)));
+            renderHistory();
+            updateStats();
+        }
+
+        function clearAllHistory() {
+            if (confirm('確定刪除所有歷史記錄嗎？')) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderHistory();
+                updateStats();
+            }
+        }
+
+        // 設備功能調用
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+            }
+        }
+        function releaseWakeLock() {
+            if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
+        }
+
+        function updateStats() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            document.getElementById('totalCount').textContent = records.length;
+            const today = new Date().toDateString();
+            document.getElementById('todayCount').textContent = records.filter(r => new Date(r.id).toDateString() === today).length;
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast'); t.textContent = m;
+            t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        function showWarning(t) {
+            const b = document.getElementById('warningBox'); document.getElementById('warningText').textContent = t;
+            b.classList.add('show');
+        }
+
+        // 初始化載入
+        window.onload = () => {
+            const draft = sessionStorage.getItem('draft');
+            if (draft) { finalTranscript = draft; updateDisplay(); }
+            renderHistory();
+            updateStats();
+            // 檢查是否為 iOS Safari
+            const ua = navigator.userAgent;
+            const isIOS = /iPhone|iPad|iPod/.test(ua);
+            const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+            if (isIOS && !isSafari) showWarning('iOS 請使用系統自帶的 Safari 瀏覽器，否則語音功能無法啟動。');
+        };
+    </script>
+</body>
+</html>
