@@ -4,77 +4,174 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="語音助手">
     <meta name="theme-color" content="#667eea">
     
-    <title>廣東話語音助手 v2.3</title>
+    <title>廣東話語音助手</title>
     <style>
-        /* 基礎樣式重置 */
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
+            min-height: 100vh; display: flex; flex-direction: column;
         }
-
-        /* 容器優化：手機端全屏顯示 */
         .container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto;
+            width: 100%; max-width: 100%; margin: 0 auto;
             background: rgba(255, 255, 255, 0.98);
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
+            min-height: 100vh; display: flex; flex-direction: column;
         }
-
-        /* 平板或電腦端才限制寬度 */
         @media (min-width: 768px) {
-            .container { 
-                max-width: 800px; 
-                min-height: 95vh; 
-                margin: 20px auto; 
-                border-radius: 20px; 
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
-            }
+            .container { max-width: 600px; min-height: 90vh; margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+        .main-content { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .stats { display: flex; gap: 10px; }
+        .stat-box { background: #f8f9fa; padding: 10px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #eee; }
+        .stat-box .number { font-size: 1.4em; font-weight: bold; color: #667eea; }
+        .stat-box .label { font-size: 0.7em; color: #666; }
+        .mic-section { text-align: center; padding: 25px 0; background: #fff; border-radius: 20px; border: 2px dashed #ddd; }
+        .mic-button {
+            width: 80px; height: 80px; border-radius: 50%; border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; font-size: 30px; cursor: pointer; box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+        }
+        .mic-button.recording { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(245, 87, 108, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); } }
+        .input-display {
+            background: #fff; border: 2px solid #f0f0f0; border-radius: 15px; padding: 15px;
+            font-size: 1.1em; min-height: 150px; outline: none; white-space: pre-wrap;
+        }
+        .input-display:empty:before { content: "點擊開始錄音..."; color: #ccc; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 12px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-secondary { background: #f0f0f0; color: #555; }
+        .btn-danger { background: #fee; color: #e74c3c; grid-column: 1/-1; }
+        .history-item { background: #f9f9f9; padding: 12px; margin-top: 10px; border-radius: 10px; position: relative; }
+        .history-item .text { padding-right: 50px; font-size: 0.95em; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: 0.3s; z-index: 1000; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>🎤 廣東話語音助手</h1><p>自動暫停優化版</p></div>
+        <div class="main-content">
+            <div class="stats">
+                <div class="stat-box"><div class="number" id="totalCount">0</div><div class="label">總記錄</div></div>
+                <div class="stat-box"><div class="number" id="todayCount">0</div><div class="label">今日</div></div>
+            </div>
+            <div class="mic-section">
+                <button class="mic-button" id="micBtn">🎙️</button>
+                <div id="status" style="margin-top:10px; font-size:0.9em; color:#666;">點擊按鈕說話</div>
+            </div>
+            <div class="input-display" id="inputDisplay" contenteditable="true"></div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="saveToHistory()">💾 儲存</button>
+                <button class="btn btn-success" onclick="shareText()">📤 分享</button>
+                <button class="btn btn-secondary" onclick="copyText()">📋 複製</button>
+                <button class="btn btn-secondary" onclick="clearInput()">🗑️ 清空</button>
+                <button class="btn btn-danger" onclick="clearAllHistory()">⚠️ 刪除所有記錄</button>
+            </div>
+            <div id="historyList"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // PWA 註冊
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Error:', err));
         }
 
-        /* 頁首樣式 */
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 20px; 
-            text-align: center; 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
+        let recognition = null, isRecording = false, finalTranscript = '', silenceTimer = null, wakeLock = null;
+        const micBtn = document.getElementById('micBtn'), inputDisplay = document.getElementById('inputDisplay');
+
+        function initRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert('不支援語音辨識');
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-HK';
+            recognition.interimResults = true;
+            recognition.onstart = () => { 
+                isRecording = true; micBtn.classList.add('recording'); 
+                resetSilenceTimer();
+                requestWakeLock();
+            };
+            recognition.onend = () => {
+                isRecording = false; micBtn.classList.remove('recording');
+                if (micBtn.classList.contains('auto-restart')) recognition.start();
+                else releaseWakeLock();
+            };
+            recognition.onresult = (event) => {
+                resetSilenceTimer();
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interim += event.results[i][0].transcript;
+                }
+                inputDisplay.textContent = finalTranscript + interim;
+            };
+            recognition.onerror = (e) => { if(e.error === 'no-speech') stopRecording(); };
+            return true;
         }
-        .header h1 { font-size: 1.4em; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .header p { opacity: 0.8; font-size: 0.85em; }
 
-        /* 主內容區域佈局 */
-        .main-content { 
-            padding: 20px; 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 15px; 
-            overflow-y: auto; 
+        function resetSilenceTimer() {
+            clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => { if(isRecording) { stopRecording(); showToast('偵測到靜音，已停止'); } }, 3000);
         }
 
-        .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; padding: 12px; font-size: 0.85em; color: #856404; display: none; }
-        .warning-box.show { display: block; }
+        function startRecording() {
+            if (!recognition && !initRecognition()) return;
+            finalTranscript = inputDisplay.textContent;
+            micBtn.classList.add('auto-restart');
+            recognition.start();
+        }
 
-        /* 統計卡片 */
-        .stats { display: flex; gap: 12px; }
-        .stat-box { background: #f8f9fa; border: 1px solid #eee; padding: 12px; border-radius: 15px; flex: 1; text-align: center; }
-        .stat-box .number
+        function stopRecording() {
+            micBtn.classList.remove('auto-restart');
+            clearTimeout(silenceTimer);
+            if(recognition) recognition.stop();
+        }
+
+        micBtn.addEventListener('click', () => isRecording ? stopRecording() : startRecording());
+
+        async function shareText() {
+            const text = inputDisplay.textContent;
+            if (navigator.share) await navigator.share({ text });
+            else { copyText(); showToast('已複製'); }
+        }
+
+        function copyText() { navigator.clipboard.writeText(inputDisplay.textContent); showToast('✅ 已複製'); }
+        function clearInput() { finalTranscript = ''; inputDisplay.textContent = ''; }
+
+        function saveToHistory() {
+            const text = inputDisplay.textContent.trim();
+            if(!text) return;
+            const records = JSON.parse(localStorage.getItem('voice_records') || '[]');
+            records.unshift({ id: Date.now(), text, date: new Date().toLocaleString() });
+            localStorage.setItem('voice_records', JSON.stringify(records.slice(0, 20)));
+            renderHistory(); showToast('💾 已儲存');
+        }
+
+        function renderHistory() {
+            const records = JSON.parse(localStorage.getItem('voice_records') || '[]');
+            document.getElementById('historyList').innerHTML = records.map(r => `
+                <div class="history-item">
+                    <div style="font-size:0.7em; color:#999;">${r.date}</div>
+                    <div class="text">${r.text}</div>
+                </div>
+            `).join('');
+            document.getElementById('totalCount').textContent = records.length;
+        }
+
+        async function requestWakeLock() { try { if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} }
+        function releaseWakeLock() { if(wakeLock) { wakeLock.release(); wakeLock = null; } }
+        function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        window.onload = renderHistory;
+    </script>
+</body>
+</html>
