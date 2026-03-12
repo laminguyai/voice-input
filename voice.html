@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="語音助手">
     <meta name="theme-color" content="#101010">
     
-    <title>廣東話語音助手 v3.3</title>
+    <title>Speech-To-Text v3.4</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -40,25 +40,20 @@
             .container { max-width: 600px; min-height: 95vh; margin: 20px auto; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         }
 
-        /* 頁首 */
+        /* 頁首：標題改為 Speech-To-Text */
         .header { 
-            padding: 30px 20px 10px; 
+            padding: 30px 20px 20px; 
             text-align: center; 
         }
-        .header h1 { font-size: 1.5em; display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; }
+        .header h1 { font-size: 1.6em; display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; }
         .header .top-mic { width: 32px; height: 32px; color: #6ee7b7; margin-bottom: 5px; }
 
-        .main-content { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        .main-content { padding: 0 20px 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
 
-        .stats { display: flex; gap: 12px; }
-        .stat-box { background: #1e1e1e; padding: 15px; border-radius: 18px; flex: 1; text-align: center; border: 1px solid #222; }
-        .stat-box .number { font-size: 1.6em; font-weight: bold; color: #6ee7b7; }
-        .stat-box .label { font-size: 0.8em; color: #777; margin-top: 4px; }
-
-        /* 輸入顯示區 */
+        /* 輸入顯示區：移除統計區後，給予更多展示空間 */
         .input-display {
             background: #1e1e1e; border: 1px solid #333; border-radius: 20px; padding: 20px;
-            font-size: 1.15em; line-height: 1.6; color: #eee; min-height: 160px; max-height: 250px;
+            font-size: 1.15em; line-height: 1.6; color: #eee; min-height: 200px; max-height: 300px;
             overflow-y: auto; outline: none;
         }
         .input-display:empty:before { content: "點擊下方按鈕開始錄音..."; color: #444; font-style: italic; }
@@ -75,7 +70,7 @@
         .btn-icon { width: 22px; height: 22px; }
         .btn-danger { color: #f87171; }
 
-        /* 錄音按鈕 (單手操作優化) */
+        /* 錄音按鈕區域 */
         .mic-section { 
             text-align: center; 
             padding: 20px 0;
@@ -116,7 +111,7 @@
         .history-item { 
             background: #1a1a1a; padding: 18px; margin-bottom: 12px; border-radius: 20px; 
             position: relative; border: 1px solid #222; 
-            cursor: pointer; /* 顯示為可點擊 */
+            cursor: pointer;
             transition: background 0.2s;
         }
         .history-item:active { background: #262626; }
@@ -141,15 +136,10 @@
     <div class="container">
         <div class="header">
             <div id="topMicContainer"></div>
-            <h1>廣東話語音助手</h1>
+            <h1>Speech-To-Text</h1>
         </div>
 
         <div class="main-content">
-            <div class="stats">
-                <div class="stat-box"><div class="number" id="totalCount">0</div><div class="label">總記錄</div></div>
-                <div class="stat-box"><div class="number" id="todayCount">0</div><div class="label">今日</div></div>
-            </div>
-
             <div class="input-wrapper">
                 <div class="input-display" id="inputDisplay" contenteditable="true"></div>
                 <div class="char-count" id="charCount">0 字</div>
@@ -179,7 +169,6 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // SVG 圖標定義
         const iconSvg = {
             mic: `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
             save: `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`,
@@ -276,7 +265,7 @@
 
         micBtn.addEventListener('click', () => isRecording ? stopRecording() : startRecording());
 
-        // 核心功能：點擊重用 (載入內容)
+        // 點擊歷史記錄重用
         function loadToInput(text) {
             finalTranscript = text;
             interimTranscript = '';
@@ -284,18 +273,17 @@
             charCount.textContent = text.length + ' 字';
             sessionStorage.setItem('draft', text);
             showToast('✅ 已載入內容');
-            // 平滑滾動回頂部以便編輯
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 歷史與功能
+        // 功能
         function saveToHistory() {
             const text = inputDisplay.textContent.trim();
             if(!text) return;
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             records.unshift({ id: Date.now(), text, date: new Date().toLocaleString('zh-HK', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(0, 20)));
-            renderHistory(); updateStats(); showToast('已儲存');
+            renderHistory(); showToast('已儲存');
         }
 
         function renderHistory() {
@@ -319,10 +307,10 @@
         function deleteRecord(id) {
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records.filter(r => r.id !== id)));
-            renderHistory(); updateStats();
+            renderHistory();
         }
         
-        function clearAllHistory() { if(confirm('確定全刪？')) { localStorage.removeItem(STORAGE_KEY); renderHistory(); updateStats(); } }
+        function clearAllHistory() { if(confirm('確定全刪？')) { localStorage.removeItem(STORAGE_KEY); renderHistory(); } }
         
         function shareText() {
             const t = inputDisplay.textContent;
@@ -336,12 +324,6 @@
             a.download = `records.json`; a.click();
         }
         
-        function updateStats() {
-            const r = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            document.getElementById('totalCount').textContent = r.length;
-            document.getElementById('todayCount').textContent = r.filter(x => new Date(x.id).toDateString() === new Date().toDateString()).length;
-        }
-        
         function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
         
         function escapeHtml(text) {
@@ -350,7 +332,7 @@
             return div.innerHTML;
         }
 
-        window.onload = () => { renderHistory(); updateStats(); };
+        window.onload = () => { renderHistory(); };
     </script>
 </body>
 </html>
