@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.jpeg"> <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="icon.jpeg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="語音助手">
     <meta name="theme-color" content="#101010">
     
-    <title>廣東話語音助手 v3.2</title>
+    <title>廣東話語音助手 v3.3</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -39,7 +40,7 @@
             .container { max-width: 600px; min-height: 95vh; margin: 20px auto; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         }
 
-        /* 頁首優化 */
+        /* 頁首 */
         .header { 
             padding: 30px 20px 10px; 
             text-align: center; 
@@ -108,10 +109,17 @@
         .status { font-size: 1em; color: #777; font-weight: 500; }
         .status.recording { color: #6ee7b7; font-weight: bold; }
 
-        /* 歷史記錄 */
+        /* 歷史記錄 (點擊重用) */
         .history-section { border-top: 1px solid #222; padding-top: 25px; margin-top: 10px; }
         .history-section h3 { font-size: 1.2em; color: #eee; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .history-item { background: #1a1a1a; padding: 18px; margin-bottom: 12px; border-radius: 20px; position: relative; border: 1px solid #222; }
+        
+        .history-item { 
+            background: #1a1a1a; padding: 18px; margin-bottom: 12px; border-radius: 20px; 
+            position: relative; border: 1px solid #222; 
+            cursor: pointer; /* 顯示為可點擊 */
+            transition: background 0.2s;
+        }
+        .history-item:active { background: #262626; }
         .history-item .date { font-size: 0.8em; color: #555; margin-bottom: 8px; }
         .history-item .text { font-size: 1.05em; color: #ddd; padding-right: 70px; line-height: 1.5; }
         .history-item .actions { position: absolute; top: 18px; right: 18px; display: flex; gap: 10px; }
@@ -199,8 +207,12 @@
         }
 
         // 語音核心邏輯
-        let recognition = null, isRecording = false, finalTranscript = '', silenceTimer = null, wakeLock = null;
+        let recognition = null, isRecording = false, finalTranscript = '', interimTranscript = '', silenceTimer = null, wakeLock = null;
         const STORAGE_KEY = 'cantonese_voice_v2';
+
+        const inputDisplay = document.getElementById('inputDisplay');
+        const charCount = document.getElementById('charCount');
+        const micBtn = document.getElementById('micBtn');
 
         function initRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -210,15 +222,15 @@
             recognition.interimResults = true;
             recognition.onstart = () => { 
                 isRecording = true; 
-                document.getElementById('micBtn').classList.add('recording');
+                micBtn.classList.add('recording');
                 document.getElementById('status').textContent = '正在聆聽...';
                 document.getElementById('status').classList.add('recording');
                 startSilenceTimer();
             };
             recognition.onend = () => {
                 isRecording = false;
-                document.getElementById('micBtn').classList.remove('recording');
-                if (document.getElementById('micBtn').classList.contains('auto-restart')) {
+                micBtn.classList.remove('recording');
+                if (micBtn.classList.contains('auto-restart')) {
                     recognition.start();
                 } else {
                     document.getElementById('status').textContent = '點擊按鈕說話';
@@ -232,8 +244,8 @@
                     if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
                     else interim += event.results[i][0].transcript;
                 }
-                document.getElementById('inputDisplay').textContent = finalTranscript + interim;
-                document.getElementById('charCount').textContent = (finalTranscript + interim).length + ' 字';
+                inputDisplay.textContent = finalTranscript + interim;
+                charCount.textContent = (finalTranscript + interim).length + ' 字';
             };
             recognition.onerror = (e) => { if(e.error === 'no-speech') stopRecording(); };
             return true;
@@ -247,8 +259,8 @@
 
         async function startRecording() {
             if (!recognition && !initRecognition()) return;
-            finalTranscript = document.getElementById('inputDisplay').textContent;
-            document.getElementById('micBtn').classList.add('auto-restart');
+            finalTranscript = inputDisplay.textContent;
+            micBtn.classList.add('auto-restart');
             try { 
                 if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
                 recognition.start(); 
@@ -256,17 +268,29 @@
         }
 
         function stopRecording() {
-            document.getElementById('micBtn').classList.remove('auto-restart');
+            micBtn.classList.remove('auto-restart');
             clearTimeout(silenceTimer);
             if(recognition) recognition.stop();
             if(wakeLock) { wakeLock.release(); wakeLock = null; }
         }
 
-        document.getElementById('micBtn').addEventListener('click', () => isRecording ? stopRecording() : startRecording());
+        micBtn.addEventListener('click', () => isRecording ? stopRecording() : startRecording());
+
+        // 核心功能：點擊重用 (載入內容)
+        function loadToInput(text) {
+            finalTranscript = text;
+            interimTranscript = '';
+            inputDisplay.textContent = text;
+            charCount.textContent = text.length + ' 字';
+            sessionStorage.setItem('draft', text);
+            showToast('✅ 已載入內容');
+            // 平滑滾動回頂部以便編輯
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         // 歷史與功能
         function saveToHistory() {
-            const text = document.getElementById('inputDisplay').textContent.trim();
+            const text = inputDisplay.textContent.trim();
             if(!text) return;
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             records.unshift({ id: Date.now(), text, date: new Date().toLocaleString('zh-HK', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) });
@@ -277,42 +301,54 @@
         function renderHistory() {
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             document.getElementById('historyList').innerHTML = records.map(r => `
-                <div class="history-item">
+                <div class="history-item" onclick="loadToInput('${r.text.replace(/'/g, "\\'")}')">
                     <div class="date">${r.date}</div>
-                    <div class="text">${r.text}</div>
+                    <div class="text">${escapeHtml(r.text)}</div>
                     <div class="actions">
-                        <button class="icon-btn" onclick="copyRecordText('${r.text.replace(/'/g, "\\'")}')">${iconSvg.copy}</button>
-                        <button class="icon-btn delete" onclick="deleteRecord(${r.id})">${iconSvg.clear}</button>
+                        <button class="icon-btn" onclick="event.stopPropagation(); copyRecordText('${r.text.replace(/'/g, "\\'")}')">${iconSvg.copy}</button>
+                        <button class="icon-btn delete" onclick="event.stopPropagation(); deleteRecord(${r.id})">${iconSvg.clear}</button>
                     </div>
                 </div>
             `).join('');
         }
 
         function copyRecordText(t) { navigator.clipboard.writeText(t); showToast('已複製'); }
-        function copyText() { copyRecordText(document.getElementById('inputDisplay').textContent); }
-        function clearInput() { finalTranscript = ''; document.getElementById('inputDisplay').textContent = ''; document.getElementById('charCount').textContent = '0 字'; }
+        function copyText() { copyRecordText(inputDisplay.textContent); }
+        function clearInput() { finalTranscript = ''; inputDisplay.textContent = ''; charCount.textContent = '0 字'; }
+        
         function deleteRecord(id) {
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records.filter(r => r.id !== id)));
             renderHistory(); updateStats();
         }
+        
         function clearAllHistory() { if(confirm('確定全刪？')) { localStorage.removeItem(STORAGE_KEY); renderHistory(); updateStats(); } }
+        
         function shareText() {
-            const t = document.getElementById('inputDisplay').textContent;
+            const t = inputDisplay.textContent;
             if(navigator.share) navigator.share({text: t}); else copyText();
         }
+        
         function exportData() {
             const r = localStorage.getItem(STORAGE_KEY);
             const blob = new Blob([r], {type: 'application/json'});
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = `records.json`; a.click();
         }
+        
         function updateStats() {
             const r = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             document.getElementById('totalCount').textContent = r.length;
             document.getElementById('todayCount').textContent = r.filter(x => new Date(x.id).toDateString() === new Date().toDateString()).length;
         }
+        
         function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         window.onload = () => { renderHistory(); updateStats(); };
     </script>
