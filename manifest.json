@@ -3,13 +3,13 @@
   "short_name": "語音助手",
   "start_url": "voice.html",
   "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
+  "background_color": "#101010",
+  "theme_color": "#101010",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/25/25682.png",
+      "src": "icon.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
