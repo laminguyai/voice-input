@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <link rel="apple-touch-icon" href="icon.jpg">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.jpg"> <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="語音助手">
     <meta name="theme-color" content="#101010">
     
-    <title>廣東話語音助手 v3.1</title>
+    <title>廣東話語音助手 v3.2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -38,7 +39,7 @@
             .container { max-width: 600px; min-height: 95vh; margin: 20px auto; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         }
 
-        /* 1. 修改頂部 Microphone Icon 與標題 */
+        /* 頁首優化 */
         .header { 
             padding: 30px 20px 10px; 
             text-align: center; 
@@ -49,18 +50,20 @@
         .main-content { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
 
         .stats { display: flex; gap: 12px; }
-        .stat-box { background: #1e1e1e; padding: 15px; border-radius: 18px; flex: 1; text-align: center; }
+        .stat-box { background: #1e1e1e; padding: 15px; border-radius: 18px; flex: 1; text-align: center; border: 1px solid #222; }
         .stat-box .number { font-size: 1.6em; font-weight: bold; color: #6ee7b7; }
         .stat-box .label { font-size: 0.8em; color: #777; margin-top: 4px; }
 
+        /* 輸入顯示區 */
         .input-display {
             background: #1e1e1e; border: 1px solid #333; border-radius: 20px; padding: 20px;
             font-size: 1.15em; line-height: 1.6; color: #eee; min-height: 160px; max-height: 250px;
             overflow-y: auto; outline: none;
         }
-        .input-display:empty:before { content: "點擊下方按鈕開始錄音..."; color: #555; font-style: italic; }
+        .input-display:empty:before { content: "點擊下方按鈕開始錄音..."; color: #444; font-style: italic; }
         .char-count { text-align: right; font-size: 0.8em; color: #555; margin-top: 6px; padding-right: 10px; }
 
+        /* 功能按鈕區 */
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn {
             padding: 15px; border: none; border-radius: 16px; cursor: pointer;
@@ -71,7 +74,7 @@
         .btn-icon { width: 22px; height: 22px; }
         .btn-danger { color: #f87171; }
 
-        /* 2. 修改錄音按鈕位置與樣式 */
+        /* 錄音按鈕 (單手操作優化) */
         .mic-section { 
             text-align: center; 
             padding: 20px 0;
@@ -83,12 +86,11 @@
         .mic-button {
             width: 90px; height: 90px; border-radius: 50%; border: none;
             background: #262626; color: white;
-            display: flex; align-items: center; justify-content: center; /* 確保圖標居中 */
+            display: flex; align-items: center; justify-content: center;
             box-shadow: 0 8px 25px rgba(0,0,0,0.4);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             touch-action: manipulation;
         }
-        /* 增加按鈕內圖標尺寸 */
         .mic-button .btn-icon { width: 45px; height: 45px; } 
 
         .mic-button.recording { 
@@ -106,6 +108,7 @@
         .status { font-size: 1em; color: #777; font-weight: 500; }
         .status.recording { color: #6ee7b7; font-weight: bold; }
 
+        /* 歷史記錄 */
         .history-section { border-top: 1px solid #222; padding-top: 25px; margin-top: 10px; }
         .history-section h3 { font-size: 1.2em; color: #eee; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
         .history-item { background: #1a1a1a; padding: 18px; margin-bottom: 12px; border-radius: 20px; position: relative; border: 1px solid #222; }
@@ -130,7 +133,7 @@
     <div class="container">
         <div class="header">
             <div id="topMicContainer"></div>
-            <h1>Speech-To-Text</h1>
+            <h1>廣東話語音助手</h1>
         </div>
 
         <div class="main-content">
@@ -168,6 +171,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // SVG 圖標定義
         const iconSvg = {
             mic: `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
             save: `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`,
@@ -178,7 +182,7 @@
             history: `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
         };
 
-        // UI 渲染
+        // 渲染 UI 圖標
         document.getElementById('topMicContainer').innerHTML = `<div class="top-mic">${iconSvg.mic}</div>`;
         document.getElementById('micBtn').innerHTML = iconSvg.mic;
         document.getElementById('saveBtn').innerHTML = `${iconSvg.save} 儲存`;
@@ -189,7 +193,12 @@
         document.getElementById('clearAllBtn').innerHTML = `${iconSvg.clear} 全刪`;
         document.getElementById('historyTitle').innerHTML = `${iconSvg.history} 歷史記錄`;
 
-        // 語音邏輯 (保持穩定)
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+        }
+
+        // 語音核心邏輯
         let recognition = null, isRecording = false, finalTranscript = '', silenceTimer = null, wakeLock = null;
         const STORAGE_KEY = 'cantonese_voice_v2';
 
@@ -255,7 +264,7 @@
 
         document.getElementById('micBtn').addEventListener('click', () => isRecording ? stopRecording() : startRecording());
 
-        // 功能函數
+        // 歷史與功能
         function saveToHistory() {
             const text = document.getElementById('inputDisplay').textContent.trim();
             if(!text) return;
