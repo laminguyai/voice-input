@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <title>廣東話語音輸入助手 (手機版)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 800px;
+                min-height: auto;
+                margin: 20px auto;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.4em;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.85em;
+        }
+
+        .main-content {
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.85em;
+            color: #856404;
+            display: none;
+        }
+
+        .warning-box.show {
+            display: block;
+        }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+
+        .stat-box .label {
+            font-size: 0.75em;
+            opacity: 0.9;
+        }
+
+        .mic-section {
+            text-align: center;
+            padding: 15px 0;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 5px 0;
+        }
+
+        .mic-button {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 36px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-button.recording {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse 1.5s infinite;
+        }
+
+        .mic-button.disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(245, 87, 108, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); }
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 0.95em;
+            color: #666;
+            min-height: 22px;
+            font-weight: 500;
+        }
+
+        .status.recording {
+            color: #f5576c;
+            font-weight: bold;
+        }
+
+        .status.error {
+            color: #dc3545;
+        }
+
+        .input-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-display {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1.15em;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            flex: 1;
+            min-height: 100px;
+            max-height: 250px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .input-display:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .input-display:empty:before {
+            content: "點擊咪高峰開始語音輸入...";
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            touch-action: manipulation;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        .history-section {
+            border-top: 2px solid #e9ecef;
+            padding-top: 15px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-header h2 {
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            position: relative;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .history-item .date {
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-item .text {
+            color: #333;
+            font-size: 0.95em;
+            line-height: 1.4;
+            word-wrap: break-word;
+            padding-right: 60px;
+        }
+
+        .history-item .actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .icon-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .icon-btn.copy { background: #28a745; color: white; }
+        .icon-btn.delete { background: #dc3545; color: white; }
+
+        .empty-state {
+            text-align: center;
+            padding: 25px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            max-width: 85%;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .debug-info {
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>🎤</span>
+                廣東話語音輸入
+            </h1>
+            <p>手機優化版 v2.0 | 自動重啟機制</p>
+        </div>
+
+        <div class="main-content">
+            <div id="warningBox" class="warning-box">
+                ⚠️ <span id="warningText"></span>
+            </div>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="number" id="totalCount">0</div>
+                    <div class="label">總記錄</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="todayCount">0</div>
+                    <div class="label">今日</div>
+                </div>
+            </div>
+
+            <div class="mic-section">
+                <button class="mic-button" id="micBtn" title="點擊開始/停止">
+                    🎙️
+                </button>
+                <div class="status" id="status">點擊上方按鈕開始</div>
+            </div>
+
+            <div class="input-wrapper">
+                <div class="input-display" id="inputDisplay" contenteditable="true"></div>
+                <div class="char-count" id="charCount">0 字</div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="saveToHistory()">
+                    <span>💾</span> 儲存
+                </button>
+                <button class="btn btn-secondary" onclick="copyText()">
+                    <span>📋</span> 複製
+                </button>
+                <button class="btn btn-secondary" onclick="clearInput()">
+                    <span>🗑️</span> 清空
+                </button>
+                <button class="btn btn-danger" onclick="clearAllHistory()">
+                    <span>⚠️</span> 全刪
+                </button>
+                <button class="btn btn-secondary btn-full" onclick="exportData()">
+                    <span>📥</span> 匯出資料
+                </button>
+            </div>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <h2>📜 歷史記錄</h2>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">
+                        暫無記錄，點擊咪高峰開始語音輸入
+                    </div>
+                </div>
+            </div>
+
+            <div class="debug-info" id="debugInfo" style="display: none;">
+                瀏覽器: <span id="browserInfo"></span><br>
+                狀態: <span id="statusInfo"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 全局變數
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        let restartTimer = null;
+        let isMobile = false;
+        
+        const micBtn = document.getElementById('micBtn');
+        const status = document.getElementById('status');
+        const inputDisplay = document.getElementById('inputDisplay');
+        const charCount = document.getElementById('charCount');
+        const STORAGE_KEY = 'cantonese_voice_records_v2';
+        const RETENTION_DAYS = 60;
+
+        // 檢測瀏覽器和平台
+        function detectBrowser() {
+            const ua = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(ua);
+            const isAndroid = /Android/.test(ua);
+            const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+            const isChrome = /Chrome/.test(ua) && !/Edg/.test(ua);
+            
+            isMobile = isIOS || isAndroid;
+            
+            return { isIOS, isAndroid, isSafari, isChrome, isMobile };
+        }
+
+        const browserInfo = detectBrowser();
+        document.getElementById('browserInfo').textContent = 
+            `${browserInfo.isIOS ? 'iOS' : browserInfo.isAndroid ? 'Android' : 'Desktop'} ${browserInfo.isSafari ? 'Safari' : browserInfo.isChrome ? 'Chrome' : 'Other'}`;
+
+        // 顯示警告
+        function showWarning(text) {
+            const box = document.getElementById('warningBox');
+            document.getElementById('warningText').textContent = text;
+            box.classList.add('show');
+        }
+
+        // 初始化語音辨識
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                status.textContent = '❌ 瀏覽器不支援語音辨識';
+                status.classList.add('error');
+                micBtn.classList.add('disabled');
+                showWarning('您的瀏覽器不支援語音辨識，請使用 Safari (iOS) 或 Chrome (Android)');
+                return false;
+            }
+
+            recognition = new SpeechRecognition();
+            
+            // 關鍵設定：手機不支援 continuous，需要自動重啟
+            recognition.continuous = false; // 手機必須設為 false
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            // 語言設定
+            recognition.lang = 'zh-HK'; // 廣東話（香港）
+            
+            // iOS 需要使用 zh-HK，Android 也是
+            if (browserInfo.isIOS) {
+                // iOS Safari 對 zh-HK 支援較好
+                recognition.lang = 'zh-HK';
+            }
+
+            recognition.onstart = () => {
+                isRecording = true;
+                micBtn.classList.add('recording');
+                status.textContent = '🔴 正在聆聽... (說話吧)';
+                status.classList.add('recording');
+                document.getElementById('statusInfo').textContent = 'Recording';
+                
+                // 震動反饋
+                if (navigator.vibrate) navigator.vibrate(50);
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                status.textContent = '已暫停，點擊繼續';
+                status.classList.remove('recording');
+                document.getElementById('statusInfo').textContent = 'Stopped';
+                
+                // 合併臨時結果
+                if (interimTranscript) {
+                    finalTranscript += interimTranscript;
+                    interimTranscript = '';
+                    updateDisplay();
+                }
+                
+                // 手機自動重啟機制：如果用戶沒有手動停止，自動重新開始
+                if (micBtn.classList.contains('auto-restart')) {
+                    setTimeout(() => {
+                        if (micBtn.classList.contains('auto-restart')) {
+                            startRecording();
+                        }
+                    }, 300); // 短暫延遲避免 beep 聲
+                }
+            };
+
+            recognition.onresult = (event) => {
+                interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                        interimTranscript = ''; // 清空臨時結果
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                updateDisplay();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('語音辨識錯誤:', event.error);
+                
+                if (event.error === 'no-speech') {
+                    // 沒有檢測到語音，這在手機上很常見，靜默處理
+                    status.textContent = '未檢測到語音，重試中...';
+                } else if (event.error === 'audio-capture') {
+                    showToast('無法存取咪高峰');
+                    stopRecording();
+                } else if (event.error === 'not-allowed') {
+                    showToast('請允許咪高峰權限');
+                    showWarning('請在瀏覽器設定中允許咪高峰權限，並確保使用 HTTPS 或 localhost');
+                    stopRecording();
+                } else if (event.error === 'network') {
+                    showToast('網絡錯誤，請檢查連線');
+                    stopRecording();
+                } else if (event.error === 'language-not-supported') {
+                    showToast('不支援此語言，嘗試使用普通話');
+                    recognition.lang = 'zh-CN'; // 後備語言
+                    restartRecording();
+                } else {
+                    // 其他錯誤，嘗試自動恢復
+                    console.log('錯誤類型:', event.error);
+                    if (micBtn.classList.contains('auto-restart')) {
+                        setTimeout(restartRecording, 1000);
+                    }
+                }
+            };
+
+            return true;
+        }
+
+        function updateDisplay() {
+            const fullText = finalTranscript + interimTranscript;
+            inputDisplay.textContent = fullText;
+            charCount.textContent = fullText.length + ' 字';
+            inputDisplay.scrollTop = inputDisplay.scrollHeight;
+            sessionStorage.setItem('current_draft', fullText);
+        }
+
+        function startRecording() {
+            if (!recognition) {
+                if (!initSpeechRecognition()) return;
+            }
+            
+            try {
+                recognition.start();
+                micBtn.classList.add('auto-restart');
+            } catch (e) {
+                // 可能已經在運行中
+                console.log('Start error:', e);
+            }
+        }
+
+        function stopRecording() {
+            micBtn.classList.remove('auto-restart');
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.log('Stop error:', e);
+                }
+            }
+        }
+
+        function restartRecording() {
+            stopRecording();
+            setTimeout(startRecording, 200);
+        }
+
+        // 切換錄音狀態
+        function toggleRecording() {
+            if (micBtn.classList.contains('disabled')) {
+                showToast('此瀏覽器不支援語音辨識');
+                return;
+            }
+            
+            if (isRecording) {
+                stopRecording();
+                status.textContent = '已停止';
+            } else {
+                finalTranscript = inputDisplay.textContent || '';
+                interimTranscript = '';
+                startRecording();
+            }
+        }
+
+        micBtn.addEventListener('click', toggleRecording);
+
+        // 儲存功能
+        function saveToHistory() {
+            const text = inputDisplay.textContent.trim();
+            if (!text) {
+                showToast('沒有內容可儲存');
+                return;
+            }
+
+            const records = getRecords();
+            const newRecord = {
+                id: Date.now(),
+                text: text,
+                timestamp: new Date().toISOString(),
+                date: new Date().toLocaleString('zh-HK', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            };
+
+            records.unshift(newRecord);
+            saveRecords(records);
+            renderHistory();
+            updateStats();
+            showToast('✅ 已儲存');
+            
+            // 詢問是否清空
+            setTimeout(() => {
+                if (confirm('已儲存，是否清空輸入區？')) {
+                    clearInput();
+                }
+            }, 500);
+        }
+
+        function getRecords() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveRecords(records) {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+            
+            const filtered = records.filter(record => {
+                const recordDate = new Date(record.timestamp);
+                return recordDate > cutoffDate;
+            });
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+            } catch (e) {
+                showToast('儲存空間不足');
+            }
+        }
+
+        function renderHistory() {
+            const records = getRecords();
+            const historyList = document.getElementById('historyList');
+            
+            if (records.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">暫無記錄</div>';
+                return;
+            }
+
+            historyList.innerHTML = records.map(record => `
+                <div class="history-item" data-id="${record.id}">
+                    <div class="date">
+                        <span>${record.date}</span>
+                        <span>${record.text.length} 字</span>
+                    </div>
+                    <div class="text">${escapeHtml(record.text)}</div>
+                    <div class="actions">
+                        <button class="icon-btn copy" onclick="copyRecord('${record.id}')">📋</button>
+                        <button class="icon-btn delete" onclick="deleteRecord('${record.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function deleteRecord(id) {
+            if (!confirm('確定刪除？')) return;
+            const records = getRecords().filter(r => r.id != id);
+            saveRecords(records);
+            renderHistory();
+            updateStats();
+            showToast('已刪除');
+        }
+
+        function copyRecord(id) {
+            const record = getRecords().find(r => r.id == id);
+            if (record) copyToClipboard(record.text);
+        }
+
+        function copyText() {
+            const text = inputDisplay.textContent;
+            if (!text) {
+                showToast('沒有內容');
+                return;
+            }
+            copyToClipboard(text);
+        }
+
+        function copyToClipboard(text) {
+            // 優先使用現代 API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => showToast('✅ 已複製'));
+            } else {
+                // 後備方案
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.cssText = 'position:fixed;left:-9999px;';
+                document.body.appendChild(textArea);
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    showToast('✅ 已複製');
+                } catch (err) {
+                    showToast('請手動複製');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function clearInput() {
+            finalTranscript = '';
+            interimTranscript = '';
+            inputDisplay.textContent = '';
+            charCount.textContent = '0 字';
+            sessionStorage.removeItem('current_draft');
+        }
+
+        function clearAllHistory() {
+            if (!confirm('確定清除所有記錄？')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            renderHistory();
+            updateStats();
+            showToast('已清除');
+        }
+
+        function exportData() {
+            const records = getRecords();
+            if (records.length === 0) {
+                showToast('沒有資料');
+                return;
+            }
+
+            const dataStr = JSON.stringify({
+                exportDate: new Date().toISOString(),
+                records: records
+            }, null, 2);
+            
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `records-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('📥 已匯出');
+        }
+
+        function updateStats() {
+            const records = getRecords();
+            document.getElementById('totalCount').textContent = records.length;
+            
+            const today = new Date().toDateString();
+            const todayCount = records.filter(r => new Date(r.timestamp).toDateString() === today).length;
+            document.getElementById('todayCount').textContent = todayCount;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            // 顯示除錯資訊（開發時使用）
+            // document.getElementById('debugInfo').style.display = 'block';
+            
+            // 檢查平台限制
+            if (browserInfo.isIOS && !browserInfo.isSafari) {
+                showWarning('iOS 上請使用 Safari 瀏覽器開啟此頁面，Chrome 或其他瀏覽器無法使用語音功能');
+            }
+            
+            // 恢復草稿
+            const draft = sessionStorage.getItem('current_draft');
+            if (draft) {
+                finalTranscript = draft;
+                inputDisplay.textContent = draft;
+                charCount.textContent = draft.length + ' 字';
+            }
+            
+            initSpeechRecognition();
+            renderHistory();
+            updateStats();
+        });
+
+        // 防止意外關閉
+        window.addEventListener('beforeunload', (e) => {
+            if (inputDisplay.textContent.trim()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
